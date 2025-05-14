@@ -117,6 +117,7 @@
       const input = document.getElementById("speechInput").value;
       if (!input) return alert("入力してください");
 
+      // const response = await fetch("https://say4-vaital-check.hf.space/?__theme=system&deep_link=oXGF0nD8pzk", {
       const response = await fetch("https://say4-vaital_check.hf.space/run/predict", {
         method: "POST",
         headers: {
@@ -125,8 +126,9 @@
         body: JSON.stringify({ data: [input] })
       });
 
-      const result = await response.json(); // 先に取得！
-      console.log(result); // ここでログ出力
+      // const result = await response.json();
+      const result = await response.text();
+      console.log(123); // ここでログ出力
 
       // Hugging Face Gradio の返り値はこうなっています：
       // { data: [ "<LLMの出力文字列>" ] }
