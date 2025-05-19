@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>バイタル記録ツール</title>
+  <style>
+    body { font-family: sans-serif; padding: 1em; max-width: 600px; margin: auto; }
+    input, textarea, button { display: block; width: 100%; margin-top: 1em; font-size: 1.2em; }
+    table { width: 100%; margin-top: 2em; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 0.5em; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>バイタル記録</h1>
+
+  <!-- <textarea id="responseBox"></textarea> -->
+  <textarea id="speechInput" placeholder="自然文を入力。音声入力がラクだよね？（例：脈拍72で血圧は130の85です）"></textarea>
+  <!-- <button onclick="extractFromText()">LLMで抽出</button> -->
+  <button onclick="sendMessage()">値を抽出</button>
+
+  <label>脈拍</label>
+  <input id="pulse" type="number" placeholder="例：72" />
+
+  <label>血圧（上）</label>
+  <input id="systolic" type="number" placeholder="例：130" />
+
+  <label>血圧（下）</label>
+  <input id="diastolic" type="number" placeholder="例：85" />
+
+  <label>一行日記</label>
+  <input id="memo" type="text" placeholder="今日は少しふらついた" />
+
+  <button onclick="saveVitals()">記録</button>
+  <button onclick="loadVitals()">記録一覧を表示</button>
+
+  <table id="vitalTable" style="display:none">
+    <thead>
+      <tr><th>日付</th><th>脈拍</th><th>上</th><th>下</th><th>日記</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById("speechInput").value;
+      if (!input) return alert("入力してください");
+      // ① POST：リクエストを送る
+      const res = await fetch("https://real-pigeon-41.deno.dev", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input })
+      });
+      const resultData = await res.json();
+      // console.log("結果:", resultData.data[0]);
+      console.log("結果:", res);
+      document.getElementById("responseBox").value = resultData.response;
+      // document.getElementById("responseBox").textContent = resultData.choices[0].message.content;
+
+      try {
+        // const resultText = data.choices[0].message.content;
+        // const cleanJson = resultText.replace(/```json|```/g, '').trim();
+        const cleanJson = resultData.response.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(cleanJson);
+        console.log(result);
+
+        document.getElementById("pulse").value = result.pulse ?? "";
+        document.getElementById("systolic").value = result.systolic ?? "";
+        document.getElementById("diastolic").value = result.diastolic ?? "";
+      } catch (err) {
+        console.error("JSON parse error", err);
+        alert("抽出に失敗しました。入力を確認してください。");
+      }
+
+    }
+
+    function saveVitals() {
+      const pulse = document.getElementById("pulse").value;
+      const systolic = document.getElementById("systolic").value;
+      const diastolic = document.getElementById("diastolic").value;
+      const memo = document.getElementById("memo").value;
+      const date = new Date().toISOString().split("T")[0];
+
+      const record = { date, pulse, systolic, diastolic, memo };
+      const records = JSON.parse(localStorage.getItem("vitalLogs") || "[]");
+      records.push(record);
+      localStorage.setItem("vitalLogs", JSON.stringify(records));
+      alert("記録しました！");
+    }
+
+    function loadVitals() {
+      const records = JSON.parse(localStorage.getItem("vitalLogs") || "[]");
+      const tbody = document.querySelector("#vitalTable tbody");
+      tbody.innerHTML = "";
+      records.reverse().forEach(r => {
+        const row = `<tr><td>${r.date}</td><td>${r.pulse}</td><td>${r.systolic}</td><td>${r.diastolic}</td><td>${r.memo}</td></tr>`;
+        tbody.insertAdjacentHTML("beforeend", row);
+      });
+      document.getElementById("vitalTable").style.display = "table";
+    }
+  </script>
+</body>
+</html>
